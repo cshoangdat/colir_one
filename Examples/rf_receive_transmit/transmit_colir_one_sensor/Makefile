@@ -112,6 +112,9 @@ ${DRIVER_PATH}/ColirOne/Src/servo.cpp \
 ${DRIVER_PATH}/ColirOne/Src/rf.cpp \
 ${DRIVER_PATH}/ColirOne/Src/logger.cpp \
 ${DRIVER_PATH}/ColirOne/Src/sdcard.cpp \
+${DRIVER_PATH}/Crypto/ChaCha.cpp \
+${DRIVER_PATH}/Crypto/Cipher.cpp \
+${DRIVER_PATH}/Crypto/Crypto.cpp \
 Src/main.cpp 
 
 # ASM sources
@@ -188,7 +191,9 @@ C_INCLUDES =  \
 -I${DRIVER_PATH}/Middlewares/ST/STM32_USB_Device_Library/Core/Inc \
 -I${DRIVER_PATH}/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc \
 -I${DRIVER_PATH}/ColirOne/Inc \
--IInc
+-IInc \
+-ICrypto \
+-ICrypto/utility
 
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
@@ -203,6 +208,9 @@ endif
 # Generate dependency information
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 
+# C++ compile flags
+CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics
+
 
 #######################################
 # LDFLAGS
@@ -211,7 +219,7 @@ CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 LDSCRIPT = STM32F407VETX_FLASH.ld
 
 # libraries
-LIBS = -lc -lm -lnosys 
+LIBS = -lc -lm -lnosys -lstdc++ 
 LIBDIR = 
 LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections -u _printf_float
 
@@ -242,10 +250,10 @@ $(BUILD_DIR)/%.o: %.S Makefile | $(BUILD_DIR)
 	$(AS) -c $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/%.o: %.cpp Makefile | $(BUILD_DIR)
-	$(CXX) -c $(CFLAGS) -o $@ $<
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 $(BUILD_DIR)/$(TARGET).elf: $(OBJECTS) Makefile
-	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
+	$(CXX) $(OBJECTS) $(LDFLAGS) -o $@
 	$(SZ) $@
 
 $(BUILD_DIR)/%.hex: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
