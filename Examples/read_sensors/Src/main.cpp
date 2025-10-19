@@ -4,6 +4,8 @@
 int main(void){
   ColirOne colirOne;
   colirOne.init();
+  crypto_info_t info = {};
+  store_crypto_info(&info);
 	while(1){
     XYZ_t accel = colirOne.imu.getAcceleration();
     printf("Acceleration: X: %.2f, Y: %.2f, Z: %.2f\n", accel.x, accel.y, accel.z);

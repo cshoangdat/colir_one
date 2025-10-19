@@ -1,5 +1,6 @@
 #include "main.h"
 #include "../../ColirOne/Inc/colir_one.h"
+#include "../../Crypto/ChaCha.h"
 
 const uint8_t RxAddress[] = {0xEE,0xDD,0xCC,0xBB,0xAA};
 const uint8_t TxAddress[] = {0xAA,0xDD,0xCC,0xBB,0xAA};
@@ -10,6 +11,22 @@ typedef struct __attribute__((packed)) {
     uint8_t type; // type != 0 for custom data
     uint8_t is_rocket_rx;
 } colirone_common_packet_t;
+
+static bool decryptData(const uint8_t* input, uint8_t* output, size_t dataSize) {
+    crypto_info_t info = {};
+    load_crypto_info(&info);
+    printf("\n");
+    if (dataSize == 0 || dataSize > 32) {
+        return false;
+    }
+    
+    ChaCha chaCha;
+    chaCha.setKey(info.key, 32);
+    chaCha.setIV(info.nonce, 12);
+    
+    chaCha.decrypt(output, input, dataSize);
+    return true;
+}
 
 int main(void){
   ColirOne colirOne;
@@ -63,6 +80,7 @@ int main(void){
   colirOne.rf.setTxRxAdress((uint8_t*)TxAddress, (uint8_t*)RxAddress);
   colirOne.rf.setTxMode();
   // colirOne.logger.startLogging(); // start logging by default
+  uint8_t rcv_data[32] = {0};
 	while(1){
         uint32_t timestamp = colirOne.getTimeStamp();
         XYZ_t accel = colirOne.imu.getAcceleration();
@@ -141,14 +159,33 @@ int main(void){
         else{
             if(colirOne.rf.hasReceivedData()){
                 colironePayloadCmd = {0};
-                colirOne.rf.readColirOneCommand();
-                colironePayloadCmd.lighterLaunchNumber = colirOne.rf.getLighterLaunchNumber();
-                colironePayloadCmd.openShutes = colirOne.rf.getOpenShutes();
-                colironePayloadCmd.closeShutes = colirOne.rf.getCloseShutes();
-                colironePayloadCmd.startLogs = colirOne.rf.getStartLogs();
-                colironePayloadCmd.writeLogs = colirOne.rf.getWriteLogs();
-                colironePayloadCmd.resetAltitude = colirOne.rf.getResetAltitude();
-                colironePayloadCmd.removeLogs = colirOne.rf.getRemoveLogs();
+                // colirOne.rf.readColirOneCommand();
+                // colironePayloadCmd.lighterLaunchNumber = colirOne.rf.getLighterLaunchNumber();
+                // colironePayloadCmd.openShutes = colirOne.rf.getOpenShutes();
+                // colironePayloadCmd.closeShutes = colirOne.rf.getCloseShutes();
+                // colironePayloadCmd.startLogs = colirOne.rf.getStartLogs();
+                // colironePayloadCmd.writeLogs = colirOne.rf.getWriteLogs();
+                // colironePayloadCmd.resetAltitude = colirOne.rf.getResetAltitude();
+                // colironePayloadCmd.removeLogs = colirOne.rf.getRemoveLogs();
+                colirOne.rf.getReceivedData(rcv_data);
+                printf("Received data: ");
+                for(int i = 0; i < 32; i++){
+                    printf("%02X ", rcv_data[i]);
+                }
+                printf("\n");
+                uint8_t decryptedData[32];
+                bool res = decryptData(rcv_data, decryptedData, 32);
+                if(res){
+                    printf("Decrypted data: ");
+                    for(int i = 0; i < sizeof(colironePayloadCmd); i++){
+                        printf("%02X ", decryptedData[i]);
+                    }
+                    printf("\n");
+                }
+                else{
+                    printf("Decryption failed\n");
+                }
+                memcpy(&colironePayloadCmd, decryptedData, sizeof(colironePayloadCmd));
                 printf("RX: Launch Number: %d, Open Shutes: %d, Close Shutes: %d, Start Logs: %d, Write Logs: %d, Reset Altitude: %d, Remove Logs: %d\n",
                        colironePayloadCmd.lighterLaunchNumber, 
                        colironePayloadCmd.openShutes, 

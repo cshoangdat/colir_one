@@ -4,16 +4,16 @@
 const char* DEFAULT_LOG_FOLDER_NAME         = "DEFAULT_COLIR_ONE_LOGS";
 const char* DEFAULT_LOG_FILE_NAME           = "colirone_logs.txt";
 
-#define FLASH_PAGE_SIZE         256
+#define W25Q64_FLASH_PAGE_SIZE         256
 #define START_LOG_PAGE          16
-#define START_LOG_ADDRESS       (START_LOG_PAGE * FLASH_PAGE_SIZE)
+#define START_LOG_ADDRESS       (START_LOG_PAGE * W25Q64_FLASH_PAGE_SIZE)
 #define END_LOG_PAGE            (32768 - 1)
 #define START_LOG_SECTOR        (START_LOG_PAGE / 16)
 
 #define START_CONFIG_PAGE       0
 #define END_CONFIG_PAGE         15
 #define CONFIG_SECTOR           0
-#define CONFIG_SPACE_SIZE       FLASH_PAGE_SIZE * START_LOG_PAGE
+#define CONFIG_SPACE_SIZE       W25Q64_FLASH_PAGE_SIZE * START_LOG_PAGE
 
 #define NULL_DATA               0xFF
 typedef struct {
@@ -70,18 +70,18 @@ void Logger::resetLogFileIndex(void) {
 }
 
 uint32_t Logger::findLastFreeAddress(void) {
-    uint8_t buffer[FLASH_PAGE_SIZE];
+    uint8_t buffer[W25Q64_FLASH_PAGE_SIZE];
     uint32_t lastFreeAddress = 0;
     for(uint32_t page = START_LOG_PAGE; page < info.pageCount; page++) {
-        W25qxx_ReadPage(buffer, page, 0, FLASH_PAGE_SIZE);
-        for(uint32_t i = 0; i < FLASH_PAGE_SIZE; i++) {
+        W25qxx_ReadPage(buffer, page, 0, W25Q64_FLASH_PAGE_SIZE);
+        for(uint32_t i = 0; i < W25Q64_FLASH_PAGE_SIZE; i++) {
             if(buffer[i] == NULL_DATA) {
-                lastFreeAddress = page * FLASH_PAGE_SIZE + i;
+                lastFreeAddress = page * W25Q64_FLASH_PAGE_SIZE + i;
                 return lastFreeAddress;
             }
         }
     }
-    lastFreeAddress = info.pageCount * FLASH_PAGE_SIZE; // No free space found, return end of memory
+    lastFreeAddress = info.pageCount * W25Q64_FLASH_PAGE_SIZE; // No free space found, return end of memory
     return lastFreeAddress;
 }
 
@@ -90,7 +90,7 @@ void Logger::findStartLogAddress(void){
         startLogAddress = START_LOG_ADDRESS;
     }
     else{
-        uint32_t pageContainFreeAddress = nextFreeAddress / FLASH_PAGE_SIZE;
+        uint32_t pageContainFreeAddress = nextFreeAddress / W25Q64_FLASH_PAGE_SIZE;
         uint32_t sectorContainFreePage = W25qxx_PageToSector(pageContainFreeAddress);
         startLogAddress = (sectorContainFreePage + 1) * w25qxx.SectorSize; //End of the sector containing the next free address
     }    
@@ -122,10 +122,10 @@ colirone_storage_info_t Logger::getStorageInfo() {
 }
 
 bool Logger::isPageEmpty(uint32_t pageNumber) {
-    uint8_t buffer[FLASH_PAGE_SIZE];
-    W25qxx_ReadPage(buffer, pageNumber, 0, FLASH_PAGE_SIZE);
+    uint8_t buffer[W25Q64_FLASH_PAGE_SIZE];
+    W25qxx_ReadPage(buffer, pageNumber, 0, W25Q64_FLASH_PAGE_SIZE);
     
-    for(uint32_t i = 0; i < FLASH_PAGE_SIZE; i++) {
+    for(uint32_t i = 0; i < W25Q64_FLASH_PAGE_SIZE; i++) {
         if(buffer[i] != NULL_DATA) {
             return false;
         }
@@ -134,8 +134,8 @@ bool Logger::isPageEmpty(uint32_t pageNumber) {
 }
 
 colirone_err_t Logger::eraseSectorIfNeeded(uint32_t address, uint32_t writeSize, uint32_t offsetInPage) {
-    uint32_t currentSectorNumber = W25qxx_PageToSector(address / FLASH_PAGE_SIZE);
-    uint32_t lastPageInSector = (currentSectorNumber + 1) * w25qxx.SectorSize / FLASH_PAGE_SIZE - 1;
+    uint32_t currentSectorNumber = W25qxx_PageToSector(address / W25Q64_FLASH_PAGE_SIZE);
+    uint32_t lastPageInSector = (currentSectorNumber + 1) * w25qxx.SectorSize / W25Q64_FLASH_PAGE_SIZE - 1;
     if(!isPageEmpty(lastPageInSector)){
         uint32_t nextSectorNumber = currentSectorNumber + 1;
         printf("Erasing sector %ld due to non-empty next page %ld.\n", nextSectorNumber, lastPageInSector + 1);
@@ -152,7 +152,7 @@ void Logger::storeLog(uint8_t *data, uint32_t size) {
     if(loggingEnabled == false) return;
     uint32_t currentAddr = nextFreeAddress;
     
-    if(currentAddr + size > info.pageCount * FLASH_PAGE_SIZE) {
+    if(currentAddr + size > info.pageCount * W25Q64_FLASH_PAGE_SIZE) {
         currentAddr = START_LOG_ADDRESS;
         nextFreeAddress = START_LOG_ADDRESS;
         colironeConfig.wrapAround = 1;
@@ -165,10 +165,10 @@ void Logger::storeLog(uint8_t *data, uint32_t size) {
     uint32_t data_offset = 0;
 
     while(remain > 0) {
-        uint32_t pageAddr = currentAddr / FLASH_PAGE_SIZE;
-        uint32_t offsetInPage = currentAddr % FLASH_PAGE_SIZE;
+        uint32_t pageAddr = currentAddr / W25Q64_FLASH_PAGE_SIZE;
+        uint32_t offsetInPage = currentAddr % W25Q64_FLASH_PAGE_SIZE;
     
-        uint32_t writeBytes = FLASH_PAGE_SIZE - offsetInPage;
+        uint32_t writeBytes = W25Q64_FLASH_PAGE_SIZE - offsetInPage;
         if(writeBytes > remain) writeBytes = remain;
         if(colironeConfig.wrapAround){
             eraseSectorIfNeeded(currentAddr, writeBytes, offsetInPage);
@@ -186,12 +186,12 @@ void Logger::storeLog(uint8_t *data, uint32_t size) {
 }
 
 void Logger::printLog(uint32_t startPage, uint32_t endPage, uint32_t lastOffset) {
-    uint8_t buffer[FLASH_PAGE_SIZE];
+    uint8_t buffer[W25Q64_FLASH_PAGE_SIZE];
 
     for(uint32_t page = startPage; page <= endPage; page++) {
-        W25qxx_ReadPage(buffer, page, 0, FLASH_PAGE_SIZE);
+        W25qxx_ReadPage(buffer, page, 0, W25Q64_FLASH_PAGE_SIZE);
         if(page < endPage) {
-            for(uint32_t i = 0; i < FLASH_PAGE_SIZE; i++) {
+            for(uint32_t i = 0; i < W25Q64_FLASH_PAGE_SIZE; i++) {
                 if(buffer[i] != NULL_DATA) printf("%c", buffer[i]);
             }
         } else {
@@ -205,19 +205,19 @@ void Logger::printLog(uint32_t startPage, uint32_t endPage, uint32_t lastOffset)
 void Logger::readAllLogs(void) {
     uint32_t lastAddr = nextFreeAddress;
     findStartLogAddress();
-    uint32_t startPage = startLogAddress / FLASH_PAGE_SIZE;
+    uint32_t startPage = startLogAddress / W25Q64_FLASH_PAGE_SIZE;
     if(colironeConfig.wrapAround) {
         printf("Reading logs from page %ld to page %d (wrap-around mode)\n", startPage, END_LOG_PAGE);
         for(uint32_t page = startPage ; page < info.pageCount; page++) {
-            uint8_t buffer[FLASH_PAGE_SIZE];
-            W25qxx_ReadPage(buffer, page, 0, FLASH_PAGE_SIZE);
-            for(uint32_t i = 0; i < FLASH_PAGE_SIZE; i++) {
+            uint8_t buffer[W25Q64_FLASH_PAGE_SIZE];
+            W25qxx_ReadPage(buffer, page, 0, W25Q64_FLASH_PAGE_SIZE);
+            for(uint32_t i = 0; i < W25Q64_FLASH_PAGE_SIZE; i++) {
                 if(buffer[i] != NULL_DATA) printf("%c", buffer[i]);
             }
         }
     }
-    uint32_t lastPage = lastAddr / FLASH_PAGE_SIZE;
-    uint32_t lastOffset = lastAddr % FLASH_PAGE_SIZE;
+    uint32_t lastPage = lastAddr / W25Q64_FLASH_PAGE_SIZE;
+    uint32_t lastOffset = lastAddr % W25Q64_FLASH_PAGE_SIZE;
     printf("Reading logs from page %d to page %ld (last offset: %ld)\n", START_LOG_PAGE, lastPage, lastOffset);
     printLog(START_LOG_PAGE, lastPage, lastOffset);
 }
@@ -228,8 +228,8 @@ void Logger::readLatestLogs(void) {
 
 void Logger::readLatestLogs(uint32_t numPages) {
     uint32_t lastAddr = nextFreeAddress;
-    uint32_t lastOffset = lastAddr % FLASH_PAGE_SIZE;
-    uint32_t lastPage = lastAddr / FLASH_PAGE_SIZE;
+    uint32_t lastOffset = lastAddr % W25Q64_FLASH_PAGE_SIZE;
+    uint32_t lastPage = lastAddr / W25Q64_FLASH_PAGE_SIZE;
     if(!colironeConfig.wrapAround){
         uint32_t startPage = (lastPage <= numPages) ? START_LOG_PAGE : lastPage - numPages + 1;
         printLog(startPage, lastPage, lastOffset);
@@ -240,9 +240,9 @@ void Logger::readLatestLogs(uint32_t numPages) {
             int32_t startPage = END_LOG_PAGE - readRevesePage + 1;
             printf("Reading logs from page %ld to page %d\n", startPage, END_LOG_PAGE);
             for(uint32_t page = startPage; page <= END_LOG_PAGE; page++) {
-                uint8_t buffer[FLASH_PAGE_SIZE];
-                W25qxx_ReadPage(buffer, page, 0, FLASH_PAGE_SIZE);
-                for(uint32_t i = 0; i < FLASH_PAGE_SIZE; i++) {
+                uint8_t buffer[W25Q64_FLASH_PAGE_SIZE];
+                W25qxx_ReadPage(buffer, page, 0, W25Q64_FLASH_PAGE_SIZE);
+                for(uint32_t i = 0; i < W25Q64_FLASH_PAGE_SIZE; i++) {
                     if(buffer[i] != NULL_DATA) printf("%c", buffer[i]);
                 }
             }
@@ -272,13 +272,13 @@ void Logger::eraseAllLogs(void) {
 
 uint32_t Logger::getUsedSpace(void) const {
     uint32_t freeSpace = getFreeSpace();
-    uint32_t totalSpace = info.pageCount * FLASH_PAGE_SIZE;
+    uint32_t totalSpace = info.pageCount * W25Q64_FLASH_PAGE_SIZE;
     return (totalSpace - freeSpace < 0) ? 0 : (totalSpace - freeSpace);
 }
 
 uint32_t Logger::getFreeSpace(void) const {
     if(!colironeConfig.wrapAround) {
-        return (info.pageCount * FLASH_PAGE_SIZE - nextFreeAddress < 0) ? 0 : (info.pageCount * FLASH_PAGE_SIZE - nextFreeAddress);
+        return (info.pageCount * W25Q64_FLASH_PAGE_SIZE - nextFreeAddress < 0) ? 0 : (info.pageCount * W25Q64_FLASH_PAGE_SIZE - nextFreeAddress);
     }
     else{
         return (startLogAddress - nextFreeAddress < 0) ? 0 : (startLogAddress - nextFreeAddress);
@@ -347,12 +347,12 @@ colirone_err_t Logger::writeLogToSDCard(const char* logFilePath, uint32_t startP
         return COLIRONE_ERROR;
     }
     COLIRONE_CHECK_ERROR(sdcard.openFile(logFilePath));
-    uint32_t pageSize = FLASH_PAGE_SIZE;
+    uint32_t pageSize = W25Q64_FLASH_PAGE_SIZE;
     for(uint32_t page = startPage; page <= endPage; page++) {
-        uint8_t buffer[FLASH_PAGE_SIZE];
-        W25qxx_ReadPage(buffer, page, 0, FLASH_PAGE_SIZE);
+        uint8_t buffer[W25Q64_FLASH_PAGE_SIZE];
+        W25qxx_ReadPage(buffer, page, 0, W25Q64_FLASH_PAGE_SIZE);
         if(page < endPage) {
-            for(uint32_t i = 0; i < FLASH_PAGE_SIZE; i++) {
+            for(uint32_t i = 0; i < W25Q64_FLASH_PAGE_SIZE; i++) {
                 if(buffer[i] == NULL_DATA) {
                     pageSize = i;
                     break;
@@ -400,15 +400,15 @@ colirone_err_t Logger::writeAllLogsFile(const char* logFolderName, const char* l
     }
     uint32_t lastAddr = nextFreeAddress;
     findStartLogAddress();
-    uint32_t startPage = startLogAddress / FLASH_PAGE_SIZE;
+    uint32_t startPage = startLogAddress / W25Q64_FLASH_PAGE_SIZE;
     if(colironeConfig.wrapAround) {
         printf("Writing logs from page %ld to page %d (wrap-around mode)\n", startPage, END_LOG_PAGE);
         COLIRONE_CHECK_ERROR(sdcard.openFile(logFilePath));
-        uint32_t pageSize = FLASH_PAGE_SIZE;
+        uint32_t pageSize = W25Q64_FLASH_PAGE_SIZE;
         for(uint32_t page = startPage ; page < info.pageCount; page++) {
-            uint8_t buffer[FLASH_PAGE_SIZE];
-            W25qxx_ReadPage(buffer, page, 0, FLASH_PAGE_SIZE);
-            for(uint32_t i = 0; i < FLASH_PAGE_SIZE; i++) {
+            uint8_t buffer[W25Q64_FLASH_PAGE_SIZE];
+            W25qxx_ReadPage(buffer, page, 0, W25Q64_FLASH_PAGE_SIZE);
+            for(uint32_t i = 0; i < W25Q64_FLASH_PAGE_SIZE; i++) {
                 if(buffer[i] == NULL_DATA) {
                     pageSize = i;
                     break;
@@ -418,8 +418,8 @@ colirone_err_t Logger::writeAllLogsFile(const char* logFolderName, const char* l
         }
         COLIRONE_CHECK_ERROR(sdcard.closeFile());
     }
-    uint32_t lastPage = lastAddr / FLASH_PAGE_SIZE;
-    uint32_t lastOffset = lastAddr % FLASH_PAGE_SIZE;
+    uint32_t lastPage = lastAddr / W25Q64_FLASH_PAGE_SIZE;
+    uint32_t lastOffset = lastAddr % W25Q64_FLASH_PAGE_SIZE;
     printf("Writing logs from page %d to page %ld (last offset: %ld)\n", START_LOG_PAGE, lastPage, lastOffset);
     COLIRONE_CHECK_ERROR(writeLogToSDCard(logFilePath, START_LOG_PAGE, lastPage, lastOffset));
     free(logFilePath);
@@ -444,8 +444,8 @@ colirone_err_t Logger::writeLastestLogsFile(const char* logFolderName, const cha
         return COLIRONE_ERROR;
     }
     uint32_t lastAddr = nextFreeAddress;
-    uint32_t lastOffset = lastAddr % FLASH_PAGE_SIZE;
-    uint32_t lastPage = lastAddr / FLASH_PAGE_SIZE;
+    uint32_t lastOffset = lastAddr % W25Q64_FLASH_PAGE_SIZE;
+    uint32_t lastPage = lastAddr / W25Q64_FLASH_PAGE_SIZE;
     if(!colironeConfig.wrapAround){
         uint32_t startPage = (lastPage <= numPages) ? START_LOG_PAGE : lastPage - numPages + 1;
         COLIRONE_CHECK_ERROR(writeLogToSDCard(logFilePath, startPage, lastPage, lastOffset));
@@ -455,11 +455,11 @@ colirone_err_t Logger::writeLastestLogsFile(const char* logFolderName, const cha
             int32_t readRevesePage = numPages - (lastPage - START_LOG_PAGE);
             int32_t startPage = END_LOG_PAGE - readRevesePage + 1;
             COLIRONE_CHECK_ERROR(sdcard.openFile(logFilePath));
-            uint32_t pageSize = FLASH_PAGE_SIZE;
+            uint32_t pageSize = W25Q64_FLASH_PAGE_SIZE;
             for(uint32_t page = startPage; page <= END_LOG_PAGE; page++) {
-                uint8_t buffer[FLASH_PAGE_SIZE];
-                W25qxx_ReadPage(buffer, page, 0, FLASH_PAGE_SIZE);
-                for(uint32_t i = 0; i < FLASH_PAGE_SIZE; i++) {
+                uint8_t buffer[W25Q64_FLASH_PAGE_SIZE];
+                W25qxx_ReadPage(buffer, page, 0, W25Q64_FLASH_PAGE_SIZE);
+                for(uint32_t i = 0; i < W25Q64_FLASH_PAGE_SIZE; i++) {
                     if(buffer[i] == NULL_DATA) {
                         pageSize = i;
                         break;

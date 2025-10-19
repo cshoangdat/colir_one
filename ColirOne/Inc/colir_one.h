@@ -17,6 +17,7 @@
 #include "rf.h"
 #include "logger.h"
 #include "sdcard.h"
+#include "../../Module/Inc/basic.h"
 
 #ifdef __cplusplus
 
