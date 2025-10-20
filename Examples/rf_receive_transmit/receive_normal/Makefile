@@ -59,6 +59,9 @@ $(DRIVER_PATH)/Module/Src/usb_com.c \
 $(DRIVER_PATH)/Module/Src/util.c \
 $(DRIVER_PATH)/Module/Src/w25qxx.c \
 $(DRIVER_PATH)/Module/Src/init.c \
+$(DRIVER_PATH)/Module/Src/basic.c \
+$(DRIVER_PATH)/Module/Src/cJSON.c \
+$(DRIVER_PATH)/Module/Src/flash.c \
 ${DRIVER_PATH}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c \
 ${DRIVER_PATH}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c \
 ${DRIVER_PATH}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.c \

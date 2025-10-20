@@ -65,7 +65,7 @@ void loop()
       Serial.print("Transmit data: ");
       for (size_t i = 0; i < MAX_DATA_SIZE; i++) {
           if (encryptedData[i] < 0x10) Serial.print("0");
-          Serial.print(encryptedData[i], HEX);
+          Serial.print(eryptedData[i], HEX);
           if (i < MAX_DATA_SIZE - 1) Serial.print(" ");
       }
       Serial.println();
